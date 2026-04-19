@@ -1,0 +1,73 @@
+- name: Install IBM MQ on Ubuntu
+  hosts: mq
+  become: yes
+
+  vars:
+    mq_package: 9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz
+    mq_extract_dir: /tmp/mq_install
+
+  tasks:
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - libaio1
+          - ksh
+        state: present
+        update_cache: yes
+
+    - name: Create temporary directory
+      file:
+        path: "{{ mq_extract_dir }}"
+        state: directory
+        mode: '0755'
+
+          # name: Copy MQ package to target server
+          # copy:
+          #src: "{{ mq_package }}"
+          #dest: "{{ mq_extract_dir }}/"
+    - name: Download MQ package from Blob
+      get_url:
+      url: "https://ibmmqsoftware.blob.core.windows.net/mqsoftwarelinux/9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz?sp=r&st=...&se=...&sig=..."
+      dest: "{{ mq_extract_dir }}/{{ mq_package }}"
+
+    - name: Extract MQ package
+      unarchive:
+        src: "{{ mq_extract_dir }}/{{ mq_package }}"
+        dest: "{{ mq_extract_dir }}"
+        remote_src: yes
+
+    - name: Accept MQ license
+      command: ./mqlicense.sh -accept
+      args:
+        chdir: "{{ mq_extract_dir }}/MQServer"
+
+    - name: Install MQ runtime first
+      shell: dpkg -i ibmmq-runtime_*.deb
+      args:
+        chdir: "{{ mq_extract_dir }}/MQServer"
+
+    - name: Configure runtime properly
+      shell: dpkg --configure -a
+
+    - name: Fix dependencies after runtime
+      shell: apt-get install -f -y
+
+    - name: Install remaining MQ packages
+      shell: dpkg -i *.deb || true
+      args:
+        chdir: "{{ mq_extract_dir }}/MQServer"
+
+    - name: Final dependency fix
+      shell: apt-get install -f -y
+
+    - name: Verify MQ installation
+      command: dspmqver
+      command: /opt/mqm/bin/dspmqver
+      register: mq_version
+
+    - name: Display MQ version
+      debug:
+        var: mq_version.stdout
+    - name: Set MQ installation as primary
+      command: /opt/mqm/bin/setmqinst -i -p /opt/mqm
