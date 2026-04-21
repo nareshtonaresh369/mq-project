@@ -16,7 +16,7 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
       - name: Disable host key checking
@@ -32,4 +32,3 @@ jobs:
       - name: Run Ansible Playbook
         run: |
           ansible-playbook -i hosts.ini mqinstall.yml
-
