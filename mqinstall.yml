@@ -22,14 +22,10 @@
         state: directory
         mode: '0755'
 
-          # name: Copy MQ package to target server
-          # copy:
-          #src: "{{ mq_package }}"
-          #dest: "{{ mq_extract_dir }}/"
     - name: Download MQ package from Blob
       get_url:
-      url: "https://ibmmqsoftware.blob.core.windows.net/mqsoftwarelinux/9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz?sp=r&st=...&se=...&sig=..."
-      dest: "{{ mq_extract_dir }}/{{ mq_package }}"
+        url: "https://ibmmqsoftware.blob.core.windows.net/mqsoftwarelinux/9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz?sp=r&st=2026-04-21T14:22:22Z&se=2026-04-21T22:37:22Z&spr=https&sv=2025-11-05&sr=b&sig=%2FmXqEuhIkyNdcwehaS%2FtydxrGfgc2wIbpU9rjmxiZxM%3D"
+        dest: "{{ mq_extract_dir }}/{{ mq_package }}"
 
     - name: Extract MQ package
       unarchive:
