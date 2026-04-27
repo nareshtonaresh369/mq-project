@@ -58,12 +58,12 @@
       shell: apt-get install -f -y
 
     - name: Verify MQ installation
-      command: dspmqver
       command: /opt/mqm/bin/dspmqver
       register: mq_version
 
     - name: Display MQ version
       debug:
         var: mq_version.stdout
+
     - name: Set MQ installation as primary
       command: /opt/mqm/bin/setmqinst -i -p /opt/mqm
