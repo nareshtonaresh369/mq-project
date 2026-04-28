@@ -1,69 +1,45 @@
-- name: Install IBM MQ on Ubuntu
-  hosts: mq
-  become: yes
+name: Install IBM MQ
 
-  vars:
-    mq_package: 9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz
-    mq_extract_dir: /tmp/mq_install
+on:
+  push:
+    branches:
+      - main
 
-  tasks:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-    - name: Install required dependencies
-      apt:
-        name:
-          - libaio1
-          - ksh
-        state: present
-        update_cache: yes
+    steps:
 
-    - name: Create temporary directory
-      file:
-        path: "{{ mq_extract_dir }}"
-        state: directory
-        mode: '0755'
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Download MQ package from Blob
-      get_url:
-        url: "https://ibmmqsoftware.blob.core.windows.net/mqsoftwarelinux/9.4.0.16-IBM-MQTRIAL-UbuntuLinuxX64.tar.gz?sp=r&st=2026-04-21T14:22:22Z&se=2026-04-21T22:37:22Z&spr=https&sv=2025-11-05&sr=b&sig=%2FmXqEuhIkyNdcwehaS%2FtydxrGfgc2wIbpU9rjmxiZxM%3D"
-        dest: "{{ mq_extract_dir }}/{{ mq_package }}"
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-    - name: Extract MQ package
-      unarchive:
-        src: "{{ mq_extract_dir }}/{{ mq_package }}"
-        dest: "{{ mq_extract_dir }}"
-        remote_src: yes
+      - name: Disable host key checking
+        run: |
+          echo "Host *" >> ~/.ssh/config
+          echo "    StrictHostKeyChecking no" >> ~/.ssh/config
 
-    - name: Accept MQ license
-      command: ./mqlicense.sh -accept
-      args:
-        chdir: "{{ mq_extract_dir }}/MQServer"
+      - name: Verify SSH key (debug)
+        run: |
+          ls -l ~/.ssh
+          ssh-keygen -lf ~/.ssh/id_rsa
 
-    - name: Install MQ runtime first
-      shell: dpkg -i ibmmq-runtime_*.deb
-      args:
-        chdir: "{{ mq_extract_dir }}/MQServer"
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install ansible -y
 
-    - name: Configure runtime properly
-      shell: dpkg --configure -a
+      - name: Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no azcnaresh@20.124.188.123 "echo SSH SUCCESS"
 
-    - name: Fix dependencies after runtime
-      shell: apt-get install -f -y
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook -i hosts.ini mqinstall.yml
 
-    - name: Install remaining MQ packages
-      shell: dpkg -i *.deb || true
-      args:
-        chdir: "{{ mq_extract_dir }}/MQServer"
-
-    - name: Final dependency fix
-      shell: apt-get install -f -y
-
-    - name: Verify MQ installation
-      command: /opt/mqm/bin/dspmqver
-      register: mq_version
-
-    - name: Display MQ version
-      debug:
-        var: mq_version.stdout
-
-    - name: Set MQ installation as primary
-      command: /opt/mqm/bin/setmqinst -i -p /opt/mqm
