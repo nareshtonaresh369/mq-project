@@ -1,4 +1,4 @@
-name: Install IBM MQ
+-name: Install IBM MQ
 
 on:
   push:
